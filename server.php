@@ -4,7 +4,7 @@ set_time_limit(0);// 设置超时时间为无限,防止超时
 date_default_timezone_set('Asia/shanghai');
 
 class WebSocket {
-    const LOG_PATH = '/tmp/';
+    const LOG_PATH = './log/';
     const LISTEN_SOCKET_NUM = 9;
 
     /**
@@ -38,9 +38,8 @@ class WebSocket {
                 $err_msg
             ]);
         }
-
         $this->sockets[0] = ['resource' => $this->master];
-        $pid = posix_getpid();
+        $pid = function_exists('posix_getpwuid')? posix_getpid():"Unknown";
         $this->debug(["server: {$this->master} started,pid: {$pid}"]);
 
         while (true) {
@@ -300,7 +299,31 @@ class WebSocket {
             socket_write($socket['resource'], $data, strlen($data));
         }
     }
-
+    
+    /**
+     * colorize output
+     */
+    private function dout($text, $color = null, $newLine = true)
+    {
+        $styles = array(
+            'success' => "\033[0;32m%s\033[0m",
+            'error' => "\033[31;31m%s\033[0m",
+            'info' => "\033[33;33m%s\033[0m"
+        );
+        
+        $format = '%s';
+        
+        if (isset($styles[$color]) && USE_ANSI) {
+            $format = $styles[$color];
+        }
+        
+        if ($newLine) {
+            $format .= PHP_EOL;
+        }
+        
+        printf($format, $text);
+    }
+    
     /**
      * 记录debug信息
      *
@@ -311,7 +334,9 @@ class WebSocket {
         array_unshift($info, $time);
 
         $info = array_map('json_encode', $info);
-        file_put_contents(self::LOG_PATH . 'websocket_debug.log', implode(' | ', $info) . "\r\n", FILE_APPEND);
+        $line = implode(' | ', $info) . "\r\n";
+        self::dout($line,null,false);
+        file_put_contents(self::LOG_PATH . 'websocket_debug.log', $line, FILE_APPEND);
     }
 
     /**
